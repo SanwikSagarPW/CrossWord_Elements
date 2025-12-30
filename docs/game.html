@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crossword Puzzle Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1 id="puzzle-title">Loading...</h1>
+            <div class="header-info">
+                <p id="puzzle-level">Level 1</p>
+                <p id="timer">10:00</p>
+            </div>
+        </div>
+
+        <div class="crossword-container">
+            <div id="crossword-grid"></div>
+        </div>
+
+        <div class="clues-container">
+            <div class="clue-list-wrapper">
+                <h2>Across</h2>
+                <ol id="across-clues"></ol>
+            </div>
+            <div class="clue-list-wrapper">
+                <h2>Down</h2>
+                <ol id="down-clues"></ol>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="check-btn">Check Completion</button>
+            <button id="submit-btn" class="hidden">Submit Puzzle</button>
+        </div>
+    </div>
+
+    <!-- MODAL OVERLAYS -->
+    <div id="success-overlay" class="hidden">
+        <div class="modal-box">
+            <h2>🎉 Congratulations! 🎉</h2>
+            <p>You've completed the puzzle!</p>
+            <p class="final-score">Your Score: <span id="score-display">0</span></p>
+            <button id="home-btn">Go to Home</button>
+        </div>
+    </div>
+
+    <div id="times-up-overlay" class="hidden">
+        <div class="modal-box">
+            <h2>⏰ Time's Up! ⏰</h2>
+            <p>You ran out of time. Better luck next time!</p>
+            <button id="restart-btn">Try Again</button>
+        </div>
+    </div>
+
+    <div id="incomplete-overlay" class="hidden">
+        <div class="modal-box">
+            <h2>Almost There!</h2>
+            <p>Please fill in all the cells before you can submit the puzzle.</p>
+            <button id="incomplete-ok-btn">Keep Going</button>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <h3>Admin Panel</h3>
+        <p>Secret panel activated!</p>
+    </div>
+
+    <audio src="music.mp3" autoplay loop></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
