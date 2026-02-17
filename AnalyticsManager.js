@@ -84,7 +84,7 @@ class AnalyticsManager {
     };
     
     this._reportData.diagnostics.levels.push(levelEntry);
-    console.log('[Analytics] Level started:', levelId);
+    console.log(`[Analytics] Started Level: ${levelId}`);
   }
   
   /**
@@ -105,12 +105,7 @@ class AnalyticsManager {
       // Update global session totals
       this._reportData.xpEarnedTotal += xp;
       
-      console.log('[Analytics] Level ended:', {
-        levelId,
-        successful,
-        timeTaken: (timeTakenMs / 1000).toFixed(2) + 's',
-        xp
-      });
+      console.log(`[Analytics] Completed Level: ${levelId}, Success: ${successful}, Time: ${timeTakenMs}ms, XP: ${xp}`);
     } else {
       console.warn(`[Analytics] End Level called for unknown level: ${levelId}`);
     }
@@ -143,13 +138,6 @@ class AnalyticsManager {
       };
       
       level.tasks.push(taskData);
-      
-      console.log('[Analytics] Task recorded:', {
-        taskId,
-        successful: isSuccessful,
-        timeTaken: (timeMs / 1000).toFixed(2) + 's',
-        xp
-      });
     } else {
       console.warn(`[Analytics] Record Task called for unknown level: ${levelId}`);
     }
@@ -176,17 +164,8 @@ class AnalyticsManager {
     payload.xpTotal = payload.xpTotal || payload.xpEarnedTotal || 0;
     payload.bestXp = payload.bestXp || payload.xpEarnedTotal || 0;
 
-    // Enhanced console logging
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('[Analytics] REPORT SUBMITTED');
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('Game ID:', payload.gameId);
-    console.log('Session:', payload.name);
-    console.log('Total XP:', payload.xpEarnedTotal);
-    console.log('Levels Completed:', payload.diagnostics.levels.length);
-    console.log('Raw Metrics:', payload.rawData);
-    console.log('Full Payload:', payload);
-    console.log('═══════════════════════════════════════════════════════');
+    // Simple console logging like BrainMatch
+    console.log('[Analytics] Report submitted');
 
     // Try delivery via several bridges, best-effort. If window is not present (test/node), just return payload
     if (typeof window === 'undefined') {

@@ -289,16 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const allFilled = inputs.every(input => input.value.trim() !== '');
         const filledCount = inputs.filter(input => input.value.trim() !== '').length;
         const totalCells = inputs.length;
-        const completionPercent = ((filledCount / totalCells) * 100).toFixed(1);
         
         // Track analytics for check attempt
         const timeSinceStart = Date.now() - levelStartTime;
-        
-        console.log('[Analytics] Check attempt #' + checkAttempts, {
-            filled: filledCount,
-            total: totalCells,
-            completion: completionPercent + '%'
-        });
         
         analytics.recordTask(
             currentLevelId,
@@ -307,17 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'all_filled',
             allFilled ? 'all_filled' : 'incomplete',
             timeSinceStart,
-            allFilled ? 10 : 0
+            0
         );
-        
-        // Track metrics
-        analytics.addRawMetric('check_attempts', checkAttempts);
-        analytics.addRawMetric('completion_percent', completionPercent);
-        analytics.addRawMetric('filled_cells', filledCount);
-        analytics.addRawMetric('total_cells', totalCells);
-        analytics.addRawMetric('time_elapsed_seconds', Math.floor(timeSinceStart / 1000));
-        
-        console.log('[Analytics] Metrics tracked:', analytics.getReportData().rawData);
         
         // Submit analytics when player checks
         analytics.submitReport();
@@ -349,69 +333,47 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        const accuracy = inputs.length > 0 ? ((correctCount / inputs.length) * 100).toFixed(1) : 0;
         const timeTaken = GAME_DURATION - timeRemaining;
         const timeTakenMs = timeTaken * 1000;
 
         if (allCorrect) {
             clearInterval(timerInterval);
             let finalScore = 50; // Default score
-            let timeBonus = 0;
             
             if (timeTaken <= 240) { // less than 4 mins
                 finalScore = 200;
-                timeBonus = 150;
             } else if (timeTaken <= 360) { // less than 6 mins
                 finalScore = 150;
-                timeBonus = 100;
             } else if (timeTaken <= 480) { // less than 8 mins
                 finalScore = 100;
-                timeBonus = 50;
             }
             
             const attemptPenalty = Math.max(0, (checkAttempts - 1) * 5);
             const totalXP = Math.max(50, finalScore - attemptPenalty);
             
-            console.log('[Analytics] Puzzle completed!', {
-                timeTaken: timeTaken + 's',
-                baseScore: finalScore,
-                timeBonus: timeBonus,
-                attemptPenalty: attemptPenalty,
-                totalXP: totalXP,
-                accuracy: accuracy + '%'
-            });
-            
-            // Track final metrics
-            analytics.addRawMetric('accuracy_percent', accuracy);
-            analytics.addRawMetric('correct_cells', correctCount);
-            analytics.addRawMetric('incorrect_cells', incorrectCount);
-            analytics.addRawMetric('final_score', finalScore);
-            analytics.addRawMetric('time_bonus', timeBonus);
-            analytics.addRawMetric('attempt_penalty', attemptPenalty);
+            // Track only essential metrics
+            analytics.addRawMetric('correct_count', correctCount);
+            analytics.addRawMetric('incorrect_count', incorrectCount);
+            analytics.addRawMetric('total_cells', inputs.length);
+            analytics.addRawMetric('check_attempts', checkAttempts);
             
             // End level and submit
             analytics.endLevel(currentLevelId, true, timeTakenMs, totalXP);
-            console.log('[Analytics] Full Report:', analytics.getReportData());
             analytics.submitReport();
             
             scoreDisplayElement.textContent = finalScore;
             inputs.forEach(input => input.readOnly = true);
             successOverlay.classList.remove('hidden');
         } else {
-            console.log('[Analytics] Submit attempt failed:', {
-                correct: correctCount,
-                incorrect: incorrectCount,
-                accuracy: accuracy + '%'
-            });
-            
-            // Track failed submission
-            analytics.addRawMetric('accuracy_percent', accuracy);
-            analytics.addRawMetric('correct_cells', correctCount);
-            analytics.addRawMetric('incorrect_cells', incorrectCount);
+            // Track failed submission with essential metrics only
+            analytics.addRawMetric('correct_count', correctCount);
+            analytics.addRawMetric('incorrect_count', incorrectCount);
+            analytics.addRawMetric('total_cells', inputs.length);
+            analytics.addRawMetric('check_attempts', checkAttempts);
             
             analytics.recordTask(
                 currentLevelId,
-                'submit_attempt_failed_' + Date.now(),
+                'submit_failed_' + Date.now(),
                 'Failed Submit Attempt',
                 'all_correct',
                 'has_errors',
