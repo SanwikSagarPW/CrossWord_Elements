@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phaser 3 Example with Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <script src="../dist/analytics-bridge.js"></script>
+</head>
+<body>
+    <h1>Phaser 3 Example</h1>
+    <div id="game-container"></div>
+    <div style="margin-top: 10px;">
+        <button onclick="game.scene.keys.GameScene.submitReport()">Submit Report</button>
+    </div>
+
+    <script>
+        class GameScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'GameScene' });
+            }
+
+            create() {
+                // Initialize analytics
+                this.analytics = new AnalyticsManager();
+                this.analytics.initialize('phaser_game_123', 'player_session_456');
+                
+                this.add.text(100, 100, 'Phaser Game Running', { fill: '#0f0' });
+                this.add.text(100, 150, 'Click to Start/End Level', { fill: '#fff' })
+                    .setInteractive()
+                    .on('pointerdown', () => this.toggleLevel());
+
+                this.levelActive = false;
+                
+                // Track FPS
+                this.time.addEvent({
+                    delay: 1000,
+                    callback: () => {
+                        const fps = this.game.loop.actualFps.toFixed(2);
+                        this.analytics.addRawMetric('fps', fps);
+                    },
+                    loop: true
+                });
+            }
+            
+            toggleLevel() {
+                if (!this.levelActive) {
+                    this.analytics.startLevel('level_1');
+                    this.levelStartTime = Date.now();
+                    this.levelActive = true;
+                    console.log('Level Started');
+                } else {
+                    const timeTaken = Date.now() - this.levelStartTime;
+                    const success = true;
+                    const xp = 100;
+                    this.analytics.endLevel('level_1', success, timeTaken, xp);
+                    this.levelActive = false;
+                    console.log('Level Ended');
+                }
+            }
+
+            submitReport() {
+                this.analytics.submitReport();
+            }
+        }
+
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            scene: GameScene
+        };
+
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>

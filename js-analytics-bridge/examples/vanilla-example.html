@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Canvas Game with Analytics</title>
+</head>
+<body>
+  <h1>Vanilla JS Canvas Example</h1>
+  <canvas id="gameCanvas" width="800" height="600" style="border:1px solid #000;"></canvas>
+  <div style="margin-top: 10px;">
+    <button onclick="startLevel('level_1')">Start Level 1</button>
+    <button onclick="recordTask()">Record Task</button>
+    <button onclick="endLevel('level_1', true)">End Level (Success)</button>
+    <button onclick="endLevel('level_1', false)">End Level (Fail)</button>
+    <button onclick="submitAnalytics()">Submit Report</button>
+  </div>
+  
+  <script src="../dist/analytics-bridge.js"></script>
+  <script>
+    // AnalyticsManager is available as global Class
+    const analytics = new AnalyticsManager(); 
+    analytics.initialize('canvas_game_123', 'player_session_456');
+    
+    // Your game logic
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let levelStartTime = 0;
+    
+    function startLevel(levelId) {
+      analytics.startLevel(levelId);
+      levelStartTime = Date.now();
+      console.log('Level started:', levelId);
+    }
+    
+    function recordTask() {
+        // Simulate a task
+        analytics.recordTask(
+            'level_1',
+            'task_' + Date.now(),
+            'What is 2+2?',
+            '4',
+            '4',
+            1500,
+            10
+        );
+        console.log('Task recorded');
+    }
+
+    function endLevel(levelId, success) {
+      const timeTaken = Date.now() - levelStartTime;
+      const xp = success ? 100 : 0;
+      analytics.endLevel(levelId, success, timeTaken, xp);
+      console.log('Level ended:', levelId, 'Success:', success);
+    }
+    
+    function submitAnalytics() {
+      analytics.submitReport();
+    }
+    
+    // Track FPS
+    let lastTime = Date.now();
+    let fps = 0;
+    
+    function gameLoop() {
+      const now = Date.now();
+      fps = Math.round(1000 / (now - lastTime));
+      lastTime = now;
+      
+      // Update FPS metric every second
+      if (now % 1000 < 16) {
+        analytics.addRawMetric('fps', fps.toString());
+      }
+      
+      // Your game rendering code
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(100, 100, 50, 50);
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    gameLoop();
+  </script>
+</body>
+</html>

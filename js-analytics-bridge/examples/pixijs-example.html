@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PixiJS Example with Analytics</title>
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script src="../dist/analytics-bridge.js"></script>
+</head>
+<body>
+    <h1>PixiJS Example</h1>
+    <div id="game-container"></div>
+    <div style="margin-top: 10px;">
+        <button onclick="startLevel('level_1')">Start Level</button>
+        <button onclick="endLevel('level_1', true, 100)">End Level</button>
+        <button onclick="submitAnalytics()">Submit Report</button>
+    </div>
+
+    <script>
+        const app = new PIXI.Application({ width: 800, height: 600 });
+        document.getElementById('game-container').appendChild(app.view);
+
+        const analytics = new AnalyticsManager();
+
+        // Initialize
+        analytics.initialize('pixijs_game_123', 'player_session_456');
+
+        // Graphics
+        const graphics = new PIXI.Graphics();
+        graphics.beginFill(0xDE3249);
+        graphics.drawRect(50, 50, 100, 100);
+        graphics.endFill();
+        app.stage.addChild(graphics);
+
+        // Track performance
+        app.ticker.add(() => {
+            if (app.ticker.FPS) {
+                analytics.addRawMetric('fps', app.ticker.FPS.toFixed(2));
+            }
+            graphics.rotation += 0.01;
+        });
+
+        let levelStartTime = 0;
+
+        // Game logic
+        function startLevel(levelId) {
+            analytics.startLevel(levelId);
+            levelStartTime = Date.now();
+            console.log('Level Started');
+        }
+
+        function endLevel(levelId, success, xpEarned) {
+            const timeTaken = Date.now() - levelStartTime;
+            analytics.endLevel(levelId, success, timeTaken, xpEarned);
+            console.log('Level Ended');
+        }
+
+        function submitAnalytics() {
+            analytics.submitReport();
+        }
+    </script>
+</body>
+</html>
