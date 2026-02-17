@@ -47,7 +47,11 @@ class AnalyticsManager {
     this._reportData.xpEarnedTotal = 0;
     
     this._isInitialized = true;
-    console.log(`[Analytics] Initialized for: ${gameId}`);
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[Analytics] Initialized for:', gameId);
+    console.log('  Session Name:', sessionName);
+    console.log('  Timestamp:', new Date().toISOString());
+    console.log('═══════════════════════════════════════════════════════');
   }
   
   /**
@@ -62,6 +66,7 @@ class AnalyticsManager {
     }
     
     this._reportData.rawData.push({ key, value: String(value) });
+    console.log(`[Analytics] Metric Added: ${key} = ${value}`);
   }
   
   /**
@@ -85,6 +90,7 @@ class AnalyticsManager {
     
     this._reportData.diagnostics.levels.push(levelEntry);
     console.log(`[Analytics] Started Level: ${levelId}`);
+    console.log(`  📍 Level entry created at index: ${this._reportData.diagnostics.levels.length - 1}`);
   }
   
   /**
@@ -105,7 +111,9 @@ class AnalyticsManager {
       // Update global session totals
       this._reportData.xpEarnedTotal += xp;
       
-      console.log(`[Analytics] Completed Level: ${levelId}, Success: ${successful}, Time: ${timeTakenMs}ms, XP: ${xp}`);
+      console.log(`[Analytics] Completed Level: ${levelId}`);
+      console.log(`  ✓ Success: ${successful}, ⏱ Time: ${timeTakenMs}ms, ⭐ XP: ${xp}`);
+      console.log(`  📊 Total Session XP: ${this._reportData.xpEarnedTotal}`);
     } else {
       console.warn(`[Analytics] End Level called for unknown level: ${levelId}`);
     }
@@ -138,6 +146,9 @@ class AnalyticsManager {
       };
       
       level.tasks.push(taskData);
+      
+      console.log(`[Analytics] Task Recorded: ${taskId}`);
+      console.log(`  ${isSuccessful ? '✓ Success' : '✗ Failed'} - Time: ${timeMs}ms, XP: ${xp}`);
     } else {
       console.warn(`[Analytics] Record Task called for unknown level: ${levelId}`);
     }
@@ -164,8 +175,47 @@ class AnalyticsManager {
     payload.xpTotal = payload.xpTotal || payload.xpEarnedTotal || 0;
     payload.bestXp = payload.bestXp || payload.xpEarnedTotal || 0;
 
-    // Simple console logging like BrainMatch
-    console.log('[Analytics] Report submitted');
+    // Detailed payload logging
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[Analytics] REPORT SUBMITTED');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('📊 Session Information:');
+    console.log('  Game ID:', payload.gameId);
+    console.log('  Session:', payload.name);
+    console.log('  Session ID:', payload.sessionId);
+    console.log('  Timestamp:', payload.timestamp);
+    console.log('');
+    console.log('🎯 Performance Metrics:');
+    console.log('  Total XP Earned:', payload.xpEarnedTotal);
+    console.log('  Levels Completed:', payload.diagnostics.levels.filter(l => l.successful).length);
+    console.log('  Total Levels:', payload.diagnostics.levels.length);
+    console.log('');
+    console.log('📈 Raw Metrics:');
+    if (payload.rawData && payload.rawData.length > 0) {
+      payload.rawData.forEach(metric => {
+        console.log(`  ${metric.key}: ${metric.value}`);
+      });
+    } else {
+      console.log('  No raw metrics recorded');
+    }
+    console.log('');
+    console.log('🎮 Level Details:');
+    payload.diagnostics.levels.forEach((level, index) => {
+      console.log(`  Level ${index + 1}: ${level.levelId}`);
+      console.log(`    ✓ Success: ${level.successful}`);
+      console.log(`    ⏱ Time: ${(level.timeTaken / 1000).toFixed(2)}s`);
+      console.log(`    ⭐ XP: ${level.xpEarned}`);
+      console.log(`    📝 Tasks: ${level.tasks.length}`);
+      if (level.tasks.length > 0) {
+        level.tasks.forEach((task, tIndex) => {
+          console.log(`      ${tIndex + 1}. ${task.taskId} - ${task.successful ? '✓' : '✗'}`);
+        });
+      }
+    });
+    console.log('');
+    console.log('📦 Full Payload:');
+    console.log(JSON.stringify(payload, null, 2));
+    console.log('═══════════════════════════════════════════════════════');
 
     // Try delivery via several bridges, best-effort. If window is not present (test/node), just return payload
     if (typeof window === 'undefined') {

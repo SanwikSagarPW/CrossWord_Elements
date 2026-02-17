@@ -289,9 +289,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const allFilled = inputs.every(input => input.value.trim() !== '');
         const filledCount = inputs.filter(input => input.value.trim() !== '').length;
         const totalCells = inputs.length;
+        const completionPercent = ((filledCount / totalCells) * 100).toFixed(1);
         
         // Track analytics for check attempt
         const timeSinceStart = Date.now() - levelStartTime;
+        
+        // Log check attempt
+        console.log('[Analytics] Check attempt #' + checkAttempts, {
+            filled: filledCount,
+            total: totalCells,
+            completion: completionPercent + '%'
+        });
         
         analytics.recordTask(
             currentLevelId,
@@ -300,8 +308,16 @@ document.addEventListener('DOMContentLoaded', () => {
             'all_filled',
             allFilled ? 'all_filled' : 'incomplete',
             timeSinceStart,
-            0
+            allFilled ? 10 : 0
         );
+        
+        // Track metrics
+        analytics.addRawMetric('check_attempts', checkAttempts);
+        analytics.addRawMetric('completion_percent', completionPercent);
+        analytics.addRawMetric('filled_cells', filledCount);
+        analytics.addRawMetric('total_cells', totalCells);
+        
+        console.log('[Analytics] Metrics tracked:', analytics.getReportData().rawData);
         
         // Submit analytics when player checks
         analytics.submitReport();
@@ -335,23 +351,40 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const timeTaken = GAME_DURATION - timeRemaining;
         const timeTakenMs = timeTaken * 1000;
+        const accuracy = inputs.length > 0 ? ((correctCount / inputs.length) * 100).toFixed(1) : 0;
 
         if (allCorrect) {
             clearInterval(timerInterval);
             let finalScore = 50; // Default score
+            let timeBonus = 0;
+            let attemptBonus = 0;
             
             if (timeTaken <= 240) { // less than 4 mins
                 finalScore = 200;
+                timeBonus = 150;
             } else if (timeTaken <= 360) { // less than 6 mins
                 finalScore = 150;
+                timeBonus = 100;
             } else if (timeTaken <= 480) { // less than 8 mins
                 finalScore = 100;
+                timeBonus = 50;
             }
             
             const attemptPenalty = Math.max(0, (checkAttempts - 1) * 5);
+            attemptBonus = Math.max(0, 50 - attemptPenalty);
             const totalXP = Math.max(50, finalScore - attemptPenalty);
             
-            // Track only essential metrics
+            console.log('[Analytics] Level completed!', {
+                timeTaken: timeTaken + 's',
+                baseXP: finalScore,
+                timeBonus: timeBonus,
+                attemptBonus: attemptBonus,
+                totalXP: totalXP,
+                accuracy: accuracy + '%'
+            });
+            
+            // Track final metrics
+            analytics.addRawMetric('accuracy_percent', accuracy);
             analytics.addRawMetric('correct_count', correctCount);
             analytics.addRawMetric('incorrect_count', incorrectCount);
             analytics.addRawMetric('total_cells', inputs.length);
@@ -359,13 +392,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // End level and submit
             analytics.endLevel(currentLevelId, true, timeTakenMs, totalXP);
+            
+            // Log full report before submission
+            console.log('[Analytics] Full Report:', analytics.getReportData());
+            
             analytics.submitReport();
             
             scoreDisplayElement.textContent = finalScore;
             inputs.forEach(input => input.readOnly = true);
             successOverlay.classList.remove('hidden');
         } else {
-            // Track failed submission with essential metrics only
+            console.log('[Analytics] Submit attempt failed:', {
+                correct: correctCount,
+                incorrect: incorrectCount,
+                accuracy: accuracy + '%'
+            });
+            
+            // Track failed submission
+            analytics.addRawMetric('accuracy_percent', accuracy);
             analytics.addRawMetric('correct_count', correctCount);
             analytics.addRawMetric('incorrect_count', incorrectCount);
             analytics.addRawMetric('total_cells', inputs.length);

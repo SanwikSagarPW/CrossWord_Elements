@@ -347,15 +347,35 @@
             padding: 50px 40px;
             max-width: 700px;
             width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
             box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
             border: 1px solid rgba(3, 218, 198, 0.2);
         }
         
+        .instructions-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .instructions-container::-webkit-scrollbar-track {
+            background: rgba(68, 68, 68, 0.3);
+            border-radius: 4px;
+        }
+        
+        .instructions-container::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+        
+        .instructions-container::-webkit-scrollbar-thumb:hover {
+            background: var(--button-hover);
+        }
+        
         .instructions-title {
-            font-size: 3em;
-            margin-bottom: 50px;
+            font-size: 2.5em;
+            margin-bottom: 40px;
             text-align: center;
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             font-weight: bold;
         }
         
@@ -378,15 +398,15 @@
         .instructions-steps {
             display: flex;
             flex-direction: column;
-            gap: 40px;
-            margin-bottom: 30px;
+            gap: 30px;
+            margin-bottom: 20px;
         }
         
         .instruction-step {
             display: flex;
             align-items: center;
-            gap: 30px;
-            padding: 25px;
+            gap: 25px;
+            padding: 20px;
             background: rgba(3, 218, 198, 0.05);
             border-radius: 12px;
             border-left: 4px solid var(--accent-color);
@@ -406,9 +426,9 @@
         
         .step-text {
             color: var(--text-color);
-            font-size: 1.2em;
-            line-height: 1.6;
-            margin-bottom: 15px;
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin-bottom: 10px;
         }
         
         .step-visual {
@@ -455,7 +475,7 @@
         }
 
         .back-btn {
-            margin-top: 30px;
+            margin-top: 20px;
             padding: 15px 50px;
             font-size: 1.1em;
             font-family: 'Roboto Mono', monospace;
