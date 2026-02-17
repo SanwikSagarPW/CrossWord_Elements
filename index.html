@@ -203,107 +203,116 @@
         
         /* Instructions Container */
         .instructions-container {
-            background-color: var(--card-background);
-            border-radius: 12px;
-            padding: 40px;
-            max-width: 800px;
+            background: linear-gradient(135deg, rgba(29, 29, 29, 0.98) 0%, rgba(18, 18, 18, 0.98) 100%);
+            border-radius: 20px;
+            padding: 50px 40px;
+            max-width: 700px;
             width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-        }
-        
-        .instructions-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .instructions-container::-webkit-scrollbar-track {
-            background: rgba(68, 68, 68, 0.3);
-            border-radius: 4px;
-        }
-        
-        .instructions-container::-webkit-scrollbar-thumb {
-            background: var(--accent-color);
-            border-radius: 4px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(3, 218, 198, 0.2);
         }
         
         .instructions-title {
-            color: var(--accent-color);
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
+            font-size: 3em;
+            margin-bottom: 50px;
             text-align: center;
-            text-shadow: 0 0 10px rgba(3, 218, 198, 0.3);
+            letter-spacing: 8px;
+            font-weight: bold;
         }
         
-        .instructions-section {
+        .element-letter {
+            display: inline-block;
+            color: var(--accent-color);
+            border: 3px solid var(--accent-color);
+            padding: 10px 15px;
+            margin: 0 3px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            background: rgba(3, 218, 198, 0.1);
+            box-shadow: 0 0 15px rgba(3, 218, 198, 0.3);
+        }
+        
+        .normal-letter {
+            color: var(--accent-color);
+        }
+        
+        .instructions-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
             margin-bottom: 30px;
         }
         
-        .instructions-section h3 {
-            color: var(--accent-color);
-            font-size: 1.4em;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        .instruction-step {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 30px;
+            padding: 25px;
+            background: rgba(3, 218, 198, 0.05);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-color);
         }
         
-        .instructions-section h3::before {
-            content: '▸';
+        .step-number {
+            font-size: 2.5em;
             color: var(--accent-color);
-            font-size: 1.2em;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
         }
         
-        .instructions-section p,
-        .instructions-section li {
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-text {
             color: var(--text-color);
-            line-height: 1.8;
-            margin-bottom: 12px;
-            font-size: 1em;
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 15px;
         }
         
-        .instructions-section ol,
-        .instructions-section ul {
-            padding-left: 25px;
+        .step-visual {
+            margin-top: 15px;
+        }
+        
+        .mini-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(4, 45px);
+            grid-template-rows: repeat(3, 45px);
+            gap: 3px;
             margin-top: 10px;
         }
         
-        .instructions-section li {
-            margin-bottom: 10px;
+        .mini-cell {
+            border: 2px solid var(--accent-color);
+            background: rgba(29, 29, 29, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            color: var(--accent-color);
+            font-weight: bold;
+            border-radius: 4px;
         }
         
-        .key-combo {
+        .mini-cell.empty {
+            background: rgba(68, 68, 68, 0.3);
+            border-color: rgba(68, 68, 68, 0.5);
+        }
+        
+        .check-button-demo {
             display: inline-block;
-            background-color: rgba(68, 68, 68, 0.5);
-            color: var(--accent-color);
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-family: 'Roboto Mono', monospace;
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            padding: 12px 30px;
+            border-radius: 8px;
             font-weight: bold;
-            border: 1px solid rgba(3, 218, 198, 0.3);
-            margin: 0 4px;
-        }
-        
-        .tip-box {
-            background-color: rgba(3, 218, 198, 0.1);
-            border-left: 4px solid var(--accent-color);
-            padding: 15px 20px;
-            margin-top: 15px;
-            border-radius: 4px;
-        }
-        
-        .tip-box p {
-            margin-bottom: 0;
-        }
-        
-        .tip-icon {
-            color: var(--accent-color);
-            font-weight: bold;
-            margin-right: 8px;
+            font-size: 1em;
+            letter-spacing: 2px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(3, 218, 198, 0.4);
+            margin-top: 10px;
         }
         
         .back-btn {
@@ -323,18 +332,24 @@
             .puzzle-subtitle { font-size: 0.9rem; letter-spacing: 3px; }
             .btn { padding: 15px 30px; font-size: 1em; }
             .popup-content { padding: 0; max-width: 95%; }
-            .instructions-container { padding: 25px; }
-            .instructions-title { font-size: 1.8em; }
-            .instructions-section h3 { font-size: 1.2em; }
+            .instructions-container { padding: 30px 20px; }
+            .instructions-title { font-size: 2em; letter-spacing: 4px; }
+            .element-letter { padding: 8px 12px; font-size: 0.9em; }
+            .instruction-step { flex-direction: column; text-align: center; gap: 15px; }
+            .step-number { font-size: 2em; }
+            .step-text { font-size: 1em; }
+            .mini-grid { grid-template-columns: repeat(4, 35px); grid-template-rows: repeat(3, 35px); }
             .back-btn { padding: 12px 40px; font-size: 1em; }
         }
         @media (max-width: 400px) {
             .game-title-text { font-size: 3rem; }
             .puzzle-subtitle { font-size: 0.8rem; letter-spacing: 2px; }
             .buttons-container { padding: 0 10px; }
-            .instructions-container { padding: 20px; }
-            .instructions-title { font-size: 1.5em; }
-            .instructions-section h3 { font-size: 1.1em; }
+            .instructions-container { padding: 25px 15px; }
+            .instructions-title { font-size: 1.7em; letter-spacing: 3px; }
+            .element-letter { padding: 6px 10px; font-size: 0.8em; }
+            .step-text { font-size: 0.95em; }
+            .mini-grid { grid-template-columns: repeat(4, 30px); grid-template-rows: repeat(3, 30px); }
             .back-btn { padding: 10px 30px; font-size: 0.9em; }
         }
 
@@ -379,57 +394,50 @@
     <div class="popup-overlay" id="howToPopup">
         <div class="popup-content">
             <div class="instructions-container">
-                <h2 class="instructions-title">How to Play</h2>
+                <h2 class="instructions-title">
+                    <span class="element-letter">H</span><span class="normal-letter">OW TO P</span><span class="element-letter">La</span><span class="normal-letter">Y</span>
+                </h2>
                 
-                <div class="instructions-section">
-                    <h3>Objective</h3>
-                    <p>Fill in the crossword grid with the correct words based on the given clues. Each word intersects with others, sharing common letters.</p>
-                </div>
-                
-                <div class="instructions-section">
-                    <h3>How to Play</h3>
-                    <ol>
-                        <li><strong>Select a Clue:</strong> Click on any clue from the ACROSS or DOWN lists to highlight the corresponding word in the grid.</li>
-                        <li><strong>Enter Letters:</strong> Click on a cell in the grid and type the letter. The cursor will automatically move to the next cell.</li>
-                        <li><strong>Navigate:</strong> Use arrow keys to move between cells, or click on any cell directly.</li>
-                        <li><strong>Switch Direction:</strong> Click the same cell twice to toggle between ACROSS and DOWN directions.</li>
-                        <li><strong>Check Progress:</strong> Click "Check Completion" to verify all cells are filled before submitting.</li>
-                        <li><strong>Submit:</strong> Once all cells are filled, click "Submit Puzzle" to check your answers.</li>
-                    </ol>
-                </div>
-                
-                <div class="instructions-section">
-                    <h3>Keyboard Controls</h3>
-                    <ul>
-                        <li><span class="key-combo">→</span> <span class="key-combo">←</span> <span class="key-combo">↑</span> <span class="key-combo">↓</span> Navigate between cells</li>
-                        <li><span class="key-combo">A-Z</span> Type letters (automatically converted to uppercase)</li>
-                        <li><span class="key-combo">Backspace</span> Delete letter and move to previous cell</li>
-                        <li><span class="key-combo">Tab</span> Move to next empty cell</li>
-                    </ul>
-                </div>
-                
-                <div class="instructions-section">
-                    <h3>Scoring</h3>
-                    <p>Your score is based on completion time:</p>
-                    <ul>
-                        <li><strong>Under 4 minutes:</strong> 200 points</li>
-                        <li><strong>4-6 minutes:</strong> 150 points</li>
-                        <li><strong>6-8 minutes:</strong> 100 points</li>
-                        <li><strong>8-10 minutes:</strong> 50 points</li>
-                    </ul>
-                    <div class="tip-box">
-                        <p><span class="tip-icon">💡</span><strong>Tip:</strong> Work quickly but carefully! Incorrect answers stay highlighted in red, and you can keep trying until all answers are correct.</p>
+                <div class="instructions-steps">
+                    <div class="instruction-step">
+                        <div class="step-number">1.</div>
+                        <div class="step-content">
+                            <div class="step-text">Type in the chemistry themed crossword puzzle</div>
+                            <div class="step-visual">
+                                <div class="mini-grid">
+                                    <div class="mini-cell empty"></div>
+                                    <div class="mini-cell">A</div>
+                                    <div class="mini-cell empty"></div>
+                                    <div class="mini-cell empty"></div>
+                                    <div class="mini-cell">M</div>
+                                    <div class="mini-cell">O</div>
+                                    <div class="mini-cell">L</div>
+                                    <div class="mini-cell">E</div>
+                                    <div class="mini-cell empty"></div>
+                                    <div class="mini-cell">M</div>
+                                    <div class="mini-cell empty"></div>
+                                    <div class="mini-cell empty"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="instructions-section">
-                    <h3>Game Features</h3>
-                    <ul>
-                        <li><strong>Timer:</strong> 10-minute countdown displayed at the top</li>
-                        <li><strong>Word Highlighting:</strong> Selected words are highlighted in the grid</li>
-                        <li><strong>Clue Highlighting:</strong> Active clue is highlighted in the clue list</li>
-                        <li><strong>Visual Feedback:</strong> Correct answers turn green, incorrect ones flash red</li>
-                    </ul>
+                    
+                    <div class="instruction-step">
+                        <div class="step-number">2.</div>
+                        <div class="step-content">
+                            <div class="step-text">Click 'CHECK' to verify your answer</div>
+                            <div class="step-visual">
+                                <div class="check-button-demo">CHECK</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-step">
+                        <div class="step-number">3.</div>
+                        <div class="step-content">
+                            <div class="step-text">Complete the puzzle within 10 minutes to earn points. Faster completion = higher score!</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <button class="back-btn" id="backBtn">Got It!</button>
