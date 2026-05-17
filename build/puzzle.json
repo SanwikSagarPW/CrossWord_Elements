@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "title": "The Atomic Grid",
+    "author": "Shivansh",
+    "size": {
+      "rows": 12,
+      "cols": 12
+    }
+  },
+  "clues": {
+    "across": [
+      {
+        "number": 1,
+        "clue": "Used to make balloons float.",
+        "answer": "HELIUM",
+        "direction": "across",
+        "row": 1,
+        "col": 1
+      },
+      {
+        "number": 2,
+        "clue": "The metal in table salt.",
+        "answer": "SODIUM",
+        "direction": "across",
+        "row": 5,
+        "col": 0
+      },
+      {
+        "number": 3,
+        "clue": "The main gas in the air we breathe.",
+        "answer": "nitrogen",
+        "direction": "across",
+        "row": 8,
+        "col": 1
+      },
+      {
+        "number": 4,
+        "clue": "A strong metal with the symbol Fe.",
+        "answer": "iron",
+        "direction": "across",
+        "row": 3,
+        "col": 8
+      },
+      {
+        "number": 5,
+        "clue": "A gas that is essential for breathing.",
+        "answer": "oxygen",
+        "direction": "across",
+        "row": 11,
+        "col": 3
+      }
+    ],
+    "down": [
+      {
+        "number": 6,
+        "clue": "A light metal used in batteries.",
+        "answer": "LITHIUM",
+        "direction": "down",
+        "row": 0,
+        "col": 4
+      },
+      {
+        "number": 7,
+        "clue": "The first element on the periodic table.",
+        "answer": "hydrogen",
+        "direction": "down",
+        "row": 1,
+        "col": 1
+      },
+      {
+        "number": 8,
+        "clue": "A gas that glows red in signs.",
+        "answer": "NEON",
+        "direction": "down",
+        "row": 8,
+        "col": 8
+      },
+      {
+        "number": 9,
+        "clue": "An element used to make computer chips.",
+        "answer": "silicon",
+        "direction": "down",
+        "row": 2,
+        "col": 8
+      },
+      {
+        "number": 10,
+        "clue": "A mineral found in bananas.",
+        "answer": "potassium",
+        "direction": "down",
+        "row": 2,
+        "col": 10
+      }
+    ]
+  }
+}
