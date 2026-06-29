@@ -162,7 +162,12 @@
       // map existing fields to common names
       payload.xpEarned = payload.xpEarned || payload.xpEarnedTotal || 0;
       payload.xpTotal = payload.xpTotal || payload.xpEarnedTotal || 0;
-      payload.bestXp = payload.bestXp || payload.xpEarnedTotal || 0;
+      const _bestXpCur = payload.xpEarnedTotal || 0;
+      const _bestXpKey = 'bestXp_' + (payload.gameId || '');
+      let _bestXpPrev = 0;
+      try { _bestXpPrev = parseInt(localStorage.getItem(_bestXpKey) || '0', 10) || 0; } catch (_e) {}
+      payload.bestXp = Math.max(_bestXpCur, _bestXpPrev);
+      if (_bestXpCur > _bestXpPrev) { try { localStorage.setItem(_bestXpKey, String(_bestXpCur)); } catch (_e) {} }
 
       // Try delivery via several bridges, best-effort. If window is not present (test/node), just return payload
       if (typeof window === 'undefined') {

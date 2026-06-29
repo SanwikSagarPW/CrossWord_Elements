@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ANALYTICS SETUP
     // ============================================
     const analytics = new AnalyticsManager();
-    analytics.initialize('crossword_puzzle', 'session_' + Date.now());
+    analytics.initialize('crossword_elements', 'session_' + Date.now());
     
     let levelStartTime = 0;
     let currentLevelId = null;
