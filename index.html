@@ -527,7 +527,7 @@
         playBtn.addEventListener('click', async (e) => {
             try {
                 e && e.preventDefault && e.preventDefault();
-                const resp = await fetch('game.html');
+                const resp = await fetch(`game.html?playReload=${Date.now()}`);
                 if (!resp.ok) throw new Error('fetch failed');
                 const html = await resp.text();
                 document.open();
@@ -535,7 +535,7 @@
                 document.close();
             } catch (err) {
                 // fallback: navigate normally
-                window.location.href = 'game.html';
+                window.location.href = `game.html?playReload=${Date.now()}`;
             }
         });
         howToBtn.addEventListener('click', () => {
