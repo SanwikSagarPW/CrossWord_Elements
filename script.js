@@ -1,4 +1,71 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
+
+    function parsePuzzleJson(text) {
+        return JSON.parse(text.replace(/^\uFEFF/, '').trim());
+    }
+    async function loadPuzzleData(candidates) {
+        const cacheBust = 'ts=' + Date.now();
+        const loadErrors = [];
+
+        for (const file of candidates) {
+            try {
+                const response = await fetch(file + '?' + cacheBust, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const parsed = parsePuzzleJson(await response.text());
+                if (!parsed || !parsed.metadata || !parsed.clues) {
+                    throw new Error('Invalid puzzle format (missing metadata or clues).');
+                }
+
+                return parsed;
+            } catch (error) {
+                loadErrors.push(`${file}: ${error.message}`);
+            }
+        }
+
+        throw new Error('Could not load puzzle data. Tried: ' + loadErrors.join(' | '));
+    }
+
+    function getLevelPuzzleCandidates(levelNum) {
+        if (levelNum === 2) return ['puzzle-level2.json', 'level2.json'];
+        if (levelNum === 1) return ['puzzle.json', 'level1.json'];
+
+        return [
+            `puzzle-level${levelNum}.json`,
+            `level${levelNum}.json`,
+            'puzzle.json'
+        ];
+    }
+    function normalizeClues(rawClues) {
+        const across = [];
+        const down = [];
+        const seen = new Set();
+
+        const addClue = (clue, fallbackDirection) => {
+            if (!clue || clue.number == null) return;
+            const direction = String(clue.direction || fallbackDirection || 'across').toLowerCase();
+            const key = direction + '-' + clue.number;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const normalized = {
+                ...clue,
+                direction,
+                answer: String(clue.answer || '').toUpperCase(),
+                clue: String(clue.clue || clue.question || clue.text || '').trim()
+            };
+            if (!normalized.clue || !normalized.answer) return;
+            if (direction === 'down') down.push(normalized);
+            else across.push(normalized);
+        };
+
+        (rawClues.across || []).forEach((clue) => addClue(clue, 'across'));
+        (rawClues.down || []).forEach((clue) => addClue(clue, 'down'));
+
+        across.sort((a, b) => a.number - b.number);
+        down.sort((a, b) => a.number - b.number);
+        return { across, down };
+    }
+
     const ENABLE_DEV_COMPLETE_SHORTCUT = false;
     const CROSSWORD_MAX_TOTAL_XP = 200;
 
@@ -18,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const downCluesElement = document.getElementById('down-clues');
     const titleElement = document.getElementById('puzzle-title');
     const levelElement = document.getElementById('puzzle-level');
+    const progressText = document.getElementById('progress-text');
+    const backBtn = document.getElementById('back-btn');
+    const hintBtn = document.getElementById('hint-btn');
     const checkButton = document.getElementById('check-btn');
     const submitButton = document.getElementById('submit-btn');
     const successOverlay = document.getElementById('success-overlay');
@@ -174,9 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startGame() {
         try {
-            const response = await fetch('puzzle.json');
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            currentPuzzleData = await response.json();
+            currentPuzzleData = await loadPuzzleData(getLevelPuzzleCandidates(1));
             elementLevels = buildElementLevels(currentPuzzleData.clues);
             initializeGame();
             startAnalyticsLevels(currentPuzzleData.metadata);
@@ -193,16 +261,20 @@ document.addEventListener('DOMContentLoaded', () => {
         checkAttempts = 0;
         
         try {
-            const { metadata, clues } = currentPuzzleData;
+            const { metadata, clues: rawClues } = currentPuzzleData;
+            const clues = normalizeClues(rawClues);
+            currentPuzzleData.clues = clues;
             const { rows, cols } = metadata.size;
-            titleElement.textContent = metadata.title;
-            levelElement.textContent = 'Level 1';
+            if(titleElement) titleElement.textContent = metadata.title;
+            if(levelElement) levelElement.textContent = 'Level 1';
             gridState = Array(rows).fill(null).map(() => Array(cols).fill(null));
             gridElement.style.setProperty('--grid-rows', rows);
             gridElement.style.setProperty('--grid-cols', cols);
             populateGridState(clues.across);
             populateGridState(clues.down);
             renderGrid(rows, cols);
+            acrossCluesElement.innerHTML = '';
+            downCluesElement.innerHTML = '';
             renderClues(clues.across, acrossCluesElement, 'across');
             renderClues(clues.down, downCluesElement, 'down');
             startTimer();
@@ -246,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- GRID & CLUE RENDERING ---
 
     function populateGridState(clueList) {
-        clueList.forEach(clue => {
+        [...clueList].sort((a, b) => a.number - b.number).forEach(clue => {
             const answer = clue.answer.toUpperCase();
             for (let i = 0; i < answer.length; i++) {
                 const r = clue.direction === 'across' ? clue.row : clue.row + i;
@@ -303,11 +375,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 gridElement.appendChild(cell);
             }
         }
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const inputs = [...document.querySelectorAll('.cell-input')];
+        const filledCount = inputs.filter(input => input.value.trim() !== '').length;
+        const totalCells = inputs.length;
+        if (progressText) {
+            progressText.textContent = `${filledCount}/${totalCells}`;
+        }
     }
 
     function renderClues(clueList, listElement, direction) {
         listElement.innerHTML = '';
-        clueList.forEach(clue => {
+        [...clueList].sort((a, b) => a.number - b.number).forEach(clue => {
             const li = document.createElement('li');
             li.textContent = `${clue.number}. ${clue.clue}`;
             li.dataset.number = clue.number;
@@ -315,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
             li.addEventListener('click', handleClueClick);
             listElement.appendChild(li);
         });
+        listElement.dataset.count = String(clueList.length);
     }
 
     // --- USER INPUT & INTERACTION ---
@@ -336,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextCell = document.querySelector(`.grid-cell[data-row="${r}"][data-col="${c}"] input`);
             if (nextCell && !nextCell.readOnly) nextCell.focus();
         }
+        updateProgress();
     }
 
     function handleKeyDown(e) {
@@ -343,12 +427,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let { row, col } = cell.dataset;
         row = parseInt(row); col = parseInt(col);
 
-        if (e.key === 'Backspace' && e.target.value === '') {
+        if (e.key === 'Backspace') {
+            if (e.target.value !== '') {
+                e.target.value = '';
+                updateProgress();
+                return;
+            }
             e.preventDefault();
             const prevR = (currentDirection === 'down') ? row - 1 : row;
             const prevC = (currentDirection === 'across') ? col - 1 : col;
             const prevCell = document.querySelector(`.grid-cell[data-row="${prevR}"][data-col="${prevC}"] input`);
             if (prevCell) prevCell.focus();
+            updateProgress();
             return;
         }
 
@@ -525,11 +615,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (keySequence.length > 5) keySequence = keySequence.slice(-5);
     });
 
-    checkButton.addEventListener('click', checkCompletion);
-    submitButton.addEventListener('click', submitPuzzle);
-    restartButton.addEventListener('click', () => location.reload());
-    homeButton.addEventListener('click', () => { window.location.href = 'index.html'; });
-    incompleteOkButton.addEventListener('click', () => incompleteOverlay.classList.add('hidden'));
+    if(checkButton) checkButton.addEventListener('click', checkCompletion);
+    if(submitButton) submitButton.addEventListener('click', submitPuzzle);
+    if(restartButton) restartButton.addEventListener('click', () => location.reload());
+    if(homeButton) homeButton.addEventListener('click', () => { window.location.href = 'index.html'; });
+    if(incompleteOkButton) incompleteOkButton.addEventListener('click', () => incompleteOverlay.classList.add('hidden'));
+    if (backBtn) backBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+    if (hintBtn) hintBtn.addEventListener('click', () => { alert('Hint feature coming soon!'); });
 
     function completeCurrentPuzzleForTest() {
         if (!ENABLE_DEV_COMPLETE_SHORTCUT) {
@@ -579,3 +671,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start Game
     startGame();
 });
+
+

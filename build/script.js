@@ -1,13 +1,51 @@
 document.addEventListener('DOMContentLoaded', () => {
+
+    function parsePuzzleJson(text) {
+        return JSON.parse(text.replace(/^\uFEFF/, '').trim());
+    }
+
+    function normalizeClues(rawClues) {
+        const across = [];
+        const down = [];
+        const seen = new Set();
+
+        const addClue = (clue, fallbackDirection) => {
+            if (!clue || clue.number == null) return;
+            const direction = String(clue.direction || fallbackDirection || 'across').toLowerCase();
+            const key = direction + '-' + clue.number;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const normalized = {
+                ...clue,
+                direction,
+                answer: String(clue.answer || '').toUpperCase(),
+                clue: String(clue.clue || clue.question || clue.text || '').trim()
+            };
+            if (!normalized.clue || !normalized.answer) return;
+            if (direction === 'down') down.push(normalized);
+            else across.push(normalized);
+        };
+
+        (rawClues.across || []).forEach((clue) => addClue(clue, 'across'));
+        (rawClues.down || []).forEach((clue) => addClue(clue, 'down'));
+
+        across.sort((a, b) => a.number - b.number);
+        down.sort((a, b) => a.number - b.number);
+        return { across, down };
+    }
+
+    const ENABLE_DEV_COMPLETE_SHORTCUT = false;
+    const CROSSWORD_MAX_TOTAL_XP = 200;
+
     // ============================================
     // ANALYTICS SETUP
     // ============================================
-    const analytics = new AnalyticsManager();
-    analytics.initialize('crossword_elements', 'session_' + Date.now());
-    
+    const analytics = AnalyticsManager.getInstance();
+    let analyticsRunId = '';
     let levelStartTime = 0;
-    let currentLevelId = null;
     let checkAttempts = 0;
+    let elementLevels = [];
+    const submittedElementLevels = new Set();
     
     // DOM Elements
     const gridElement = document.getElementById('crossword-grid');
@@ -15,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const downCluesElement = document.getElementById('down-clues');
     const titleElement = document.getElementById('puzzle-title');
     const levelElement = document.getElementById('puzzle-level');
+    const progressText = document.getElementById('progress-text');
+    const backBtn = document.getElementById('back-btn');
+    const hintBtn = document.getElementById('hint-btn');
     const checkButton = document.getElementById('check-btn');
     const submitButton = document.getElementById('submit-btn');
     const successOverlay = document.getElementById('success-overlay');
@@ -38,14 +79,145 @@ document.addEventListener('DOMContentLoaded', () => {
     let timeRemaining = 0;
     const GAME_DURATION = 600; // 10 minutes in seconds
 
+    function createRunId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+
+        return `crossword_elements_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function postAnalyticsDebug(event, detail = {}) {
+        try {
+            window.parent.postMessage({
+                __analyticsDebug: true,
+                game: 'CrossWord_Elements',
+                event,
+                detail,
+                at: new Date().toISOString()
+            }, '*');
+        } catch (_error) {
+            // Debug-only for local harness visibility.
+        }
+    }
+
+    function getElementLevelXp(levelNumber, totalLevels) {
+        const baseXp = Math.floor(CROSSWORD_MAX_TOTAL_XP / totalLevels);
+        const extraXpLevels = CROSSWORD_MAX_TOTAL_XP % totalLevels;
+        return baseXp + (levelNumber <= extraXpLevels ? 1 : 0);
+    }
+
+    function buildElementLevels(clues) {
+        const allClues = [...clues.across, ...clues.down];
+        return allClues.map((clue, index) => ({
+            clue,
+            levelNumber: index + 1,
+            xp: getElementLevelXp(index + 1, allClues.length)
+        }));
+    }
+
+    function isClueSolved(clue) {
+        const expectedAnswer = clue.answer.toUpperCase();
+        for (let i = 0; i < expectedAnswer.length; i++) {
+            const row = clue.direction === 'across' ? clue.row : clue.row + i;
+            const col = clue.direction === 'across' ? clue.col + i : clue.col;
+            const input = document.querySelector(`.grid-cell[data-row="${row}"][data-col="${col}"] input`);
+            if (!input || input.value.toUpperCase() !== expectedAnswer[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function startAnalyticsLevels(metadata) {
+        analyticsRunId = createRunId();
+        submittedElementLevels.clear();
+        checkAttempts = 0;
+        analytics.initialize('CrossWord_Elements', analyticsRunId);
+        elementLevels.forEach(({ clue, levelNumber, xp }) => {
+            analytics.startLevel(levelNumber, { levelNumber });
+            analytics.addRawMetric(`level_${levelNumber}_element`, clue.answer.toUpperCase());
+            analytics.addRawMetric(`level_${levelNumber}_clue`, clue.clue);
+            analytics.addRawMetric(`level_${levelNumber}_xp`, String(xp));
+        });
+        analytics.addRawMetric('puzzle_title', metadata.title);
+        analytics.addRawMetric('puzzle_author', metadata.author || 'unknown');
+        analytics.addRawMetric('element_count', String(elementLevels.length));
+        analytics.addRawMetric('max_total_xp', String(CROSSWORD_MAX_TOTAL_XP));
+        levelStartTime = Date.now();
+        console.log('[Analytics] Element levels started:', { count: elementLevels.length, runId: analyticsRunId });
+        postAnalyticsDebug('levels_started', { count: elementLevels.length, runId: analyticsRunId, title: metadata.title });
+    }
+
+    function submitElementLevel(levelInfo, metrics = {}) {
+        const { clue, levelNumber, xp } = levelInfo;
+        if (submittedElementLevels.has(levelNumber)) {
+            postAnalyticsDebug('submit_skipped_duplicate', { level: levelNumber, runId: analyticsRunId });
+            return null;
+        }
+
+        Object.entries(metrics).forEach(([key, value]) => {
+            analytics.addRawMetric(key, String(value));
+        });
+        const timeTaken = Date.now() - levelStartTime;
+        analytics.endLevel(levelNumber, true, timeTaken, xp);
+        analytics.recordTask(
+            levelNumber,
+            `element_${levelNumber}`,
+            clue.clue,
+            clue.answer.toUpperCase(),
+            clue.answer.toUpperCase(),
+            timeTaken,
+            xp
+        );
+
+        const payload = analytics.submitLevel(levelNumber, { runId: analyticsRunId });
+        if (payload && payload.success === false) {
+            console.error('[Analytics] Level submit rejected:', payload.errors);
+            postAnalyticsDebug('submit_rejected', { level: levelNumber, runId: analyticsRunId, errors: payload.errors });
+            return payload;
+        }
+
+        submittedElementLevels.add(levelNumber);
+        try {
+            window.parent.postMessage(payload, '*');
+        } catch (_error) {
+            // Bridge already attempted delivery; this supports the local harness.
+        }
+        console.log('[Analytics] Element level submitted:', { level: levelNumber, runId: analyticsRunId, xp, element: clue.answer });
+        postAnalyticsDebug('submit_success', { level: levelNumber, runId: analyticsRunId, xpEarned: xp, element: clue.answer });
+        return payload;
+    }
+
+    function submitCompletedElements(metrics = {}) {
+        let submittedCount = 0;
+        elementLevels.forEach(levelInfo => {
+            if (!submittedElementLevels.has(levelInfo.levelNumber) && isClueSolved(levelInfo.clue)) {
+                submitElementLevel(levelInfo, metrics);
+                submittedCount++;
+            }
+        });
+
+        return submittedCount;
+    }
+
+    function getSubmittedXpTotal() {
+        return elementLevels.reduce((total, levelInfo) => {
+            return total + (submittedElementLevels.has(levelInfo.levelNumber) ? levelInfo.xp : 0);
+        }, 0);
+    }
+
     // --- GAME FLOW & INITIALIZATION ---
 
     async function startGame() {
         try {
-            const response = await fetch('puzzle.json');
+            const response = await fetch('puzzle.json?ts=' + Date.now());
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            currentPuzzleData = await response.json();
+            currentPuzzleData = parsePuzzleJson(await response.text());
+            elementLevels = buildElementLevels(currentPuzzleData.clues);
             initializeGame();
+            startAnalyticsLevels(currentPuzzleData.metadata);
         } catch(error) {
             console.error("Failed to start game:", error);
             gridElement.innerHTML = `<p style="color: var(--error-color);">Could not load puzzle. Please check puzzle.json and refresh.</p>`;
@@ -59,22 +231,20 @@ document.addEventListener('DOMContentLoaded', () => {
         checkAttempts = 0;
         
         try {
-            const { metadata, clues } = currentPuzzleData;
+            const { metadata, clues: rawClues } = currentPuzzleData;
+            const clues = normalizeClues(rawClues);
+            currentPuzzleData.clues = clues;
             const { rows, cols } = metadata.size;
-            titleElement.textContent = metadata.title;
-            levelElement.textContent = 'Level 1';
-            
-            // Start Analytics Level Tracking
-            currentLevelId = 'level_' + metadata.title.toLowerCase().replace(/\s+/g, '_');
-            analytics.startLevel(currentLevelId);
-            levelStartTime = Date.now();
-            
+            if(titleElement) titleElement.textContent = metadata.title;
+            if(levelElement) levelElement.textContent = 'Level 1';
             gridState = Array(rows).fill(null).map(() => Array(cols).fill(null));
             gridElement.style.setProperty('--grid-rows', rows);
             gridElement.style.setProperty('--grid-cols', cols);
             populateGridState(clues.across);
             populateGridState(clues.down);
             renderGrid(rows, cols);
+            acrossCluesElement.innerHTML = '';
+            downCluesElement.innerHTML = '';
             renderClues(clues.across, acrossCluesElement, 'across');
             renderClues(clues.down, downCluesElement, 'down');
             startTimer();
@@ -118,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- GRID & CLUE RENDERING ---
 
     function populateGridState(clueList) {
-        clueList.forEach(clue => {
+        [...clueList].sort((a, b) => a.number - b.number).forEach(clue => {
             const answer = clue.answer.toUpperCase();
             for (let i = 0; i < answer.length; i++) {
                 const r = clue.direction === 'across' ? clue.row : clue.row + i;
@@ -175,11 +345,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 gridElement.appendChild(cell);
             }
         }
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const inputs = [...document.querySelectorAll('.cell-input')];
+        const filledCount = inputs.filter(input => input.value.trim() !== '').length;
+        const totalCells = inputs.length;
+        if (progressText) {
+            progressText.textContent = `${filledCount}/${totalCells}`;
+        }
     }
 
     function renderClues(clueList, listElement, direction) {
         listElement.innerHTML = '';
-        clueList.forEach(clue => {
+        [...clueList].sort((a, b) => a.number - b.number).forEach(clue => {
             const li = document.createElement('li');
             li.textContent = `${clue.number}. ${clue.clue}`;
             li.dataset.number = clue.number;
@@ -187,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             li.addEventListener('click', handleClueClick);
             listElement.appendChild(li);
         });
+        listElement.dataset.count = String(clueList.length);
     }
 
     // --- USER INPUT & INTERACTION ---
@@ -208,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextCell = document.querySelector(`.grid-cell[data-row="${r}"][data-col="${c}"] input`);
             if (nextCell && !nextCell.readOnly) nextCell.focus();
         }
+        updateProgress();
     }
 
     function handleKeyDown(e) {
@@ -215,12 +397,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let { row, col } = cell.dataset;
         row = parseInt(row); col = parseInt(col);
 
-        if (e.key === 'Backspace' && e.target.value === '') {
+        if (e.key === 'Backspace') {
+            if (e.target.value !== '') {
+                e.target.value = '';
+                updateProgress();
+                return;
+            }
             e.preventDefault();
             const prevR = (currentDirection === 'down') ? row - 1 : row;
             const prevC = (currentDirection === 'across') ? col - 1 : col;
             const prevCell = document.querySelector(`.grid-cell[data-row="${prevR}"][data-col="${prevC}"] input`);
             if (prevCell) prevCell.focus();
+            updateProgress();
             return;
         }
 
@@ -291,37 +479,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalCells = inputs.length;
         const completionPercent = ((filledCount / totalCells) * 100).toFixed(1);
         
-        // Track analytics for check attempt
-        const timeSinceStart = Date.now() - levelStartTime;
-        
         // Log check attempt
         console.log('[Analytics] Check attempt #' + checkAttempts, {
             filled: filledCount,
             total: totalCells,
             completion: completionPercent + '%'
         });
-        
-        analytics.recordTask(
-            currentLevelId,
-            'check_attempt_' + checkAttempts,
-            `Check Attempt #${checkAttempts}`,
-            'all_filled',
-            allFilled ? 'all_filled' : 'incomplete',
-            timeSinceStart,
-            allFilled ? 10 : 0
-        );
-        
-        // Track metrics
-        analytics.addRawMetric('check_attempts', checkAttempts);
-        analytics.addRawMetric('completion_percent', completionPercent);
-        analytics.addRawMetric('filled_cells', filledCount);
-        analytics.addRawMetric('total_cells', totalCells);
-        
-        console.log('[Analytics] Metrics tracked:', analytics.getReportData().rawData);
-        
-        // Submit analytics when player checks
-        analytics.submitReport();
-        
+
         if (allFilled) {
             checkButton.classList.add('hidden');
             submitButton.classList.remove('hidden');
@@ -349,55 +513,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        const timeTaken = GAME_DURATION - timeRemaining;
-        const timeTakenMs = timeTaken * 1000;
         const accuracy = inputs.length > 0 ? ((correctCount / inputs.length) * 100).toFixed(1) : 0;
 
         if (allCorrect) {
             clearInterval(timerInterval);
-            let finalScore = 50; // Default score
-            let timeBonus = 0;
-            let attemptBonus = 0;
-            
-            if (timeTaken <= 240) { // less than 4 mins
-                finalScore = 200;
-                timeBonus = 150;
-            } else if (timeTaken <= 360) { // less than 6 mins
-                finalScore = 150;
-                timeBonus = 100;
-            } else if (timeTaken <= 480) { // less than 8 mins
-                finalScore = 100;
-                timeBonus = 50;
-            }
-            
-            const attemptPenalty = Math.max(0, (checkAttempts - 1) * 5);
-            attemptBonus = Math.max(0, 50 - attemptPenalty);
-            const totalXP = Math.max(50, finalScore - attemptPenalty);
-            
-            console.log('[Analytics] Level completed!', {
-                timeTaken: timeTaken + 's',
-                baseXP: finalScore,
-                timeBonus: timeBonus,
-                attemptBonus: attemptBonus,
-                totalXP: totalXP,
-                accuracy: accuracy + '%'
+            const newlySubmittedElements = submitCompletedElements({
+                check_attempts: checkAttempts,
+                accuracy_percent: accuracy,
+                correct_count: correctCount,
+                incorrect_count: incorrectCount,
+                total_cells: inputs.length,
+                time_taken_seconds: GAME_DURATION - timeRemaining
             });
-            
-            // Track final metrics
-            analytics.addRawMetric('accuracy_percent', accuracy);
-            analytics.addRawMetric('correct_count', correctCount);
-            analytics.addRawMetric('incorrect_count', incorrectCount);
-            analytics.addRawMetric('total_cells', inputs.length);
-            analytics.addRawMetric('check_attempts', checkAttempts);
-            
-            // End level and submit
-            analytics.endLevel(currentLevelId, true, timeTakenMs, totalXP);
-            
-            // Log full report before submission
-            console.log('[Analytics] Full Report:', analytics.getReportData());
-            
-            analytics.submitReport();
-            
+            const finalScore = getSubmittedXpTotal();
+            console.log('[Analytics] Newly completed elements submitted:', newlySubmittedElements);
+            console.log(`[Analytics] Puzzle completed with score: ${finalScore} / ${CROSSWORD_MAX_TOTAL_XP}`);
             scoreDisplayElement.textContent = finalScore;
             inputs.forEach(input => input.readOnly = true);
             successOverlay.classList.remove('hidden');
@@ -408,25 +538,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 accuracy: accuracy + '%'
             });
             
-            // Track failed submission
-            analytics.addRawMetric('accuracy_percent', accuracy);
-            analytics.addRawMetric('correct_count', correctCount);
-            analytics.addRawMetric('incorrect_count', incorrectCount);
-            analytics.addRawMetric('total_cells', inputs.length);
-            analytics.addRawMetric('check_attempts', checkAttempts);
-            
-            analytics.recordTask(
-                currentLevelId,
-                'submit_failed_' + Date.now(),
-                'Failed Submit Attempt',
-                'all_correct',
-                'has_errors',
-                timeTakenMs,
-                0
-            );
-            
-            // Submit analytics for failed attempt
-            analytics.submitReport();
+            submitCompletedElements({
+                check_attempts: checkAttempts,
+                accuracy_percent: accuracy,
+                correct_count: correctCount,
+                incorrect_count: incorrectCount,
+                total_cells: inputs.length,
+                failed_submit: true
+            });
             
             setTimeout(() => {
                 inputs.forEach(input => {
@@ -466,11 +585,58 @@ document.addEventListener('DOMContentLoaded', () => {
         if (keySequence.length > 5) keySequence = keySequence.slice(-5);
     });
 
-    checkButton.addEventListener('click', checkCompletion);
-    submitButton.addEventListener('click', submitPuzzle);
-    restartButton.addEventListener('click', () => location.reload());
-    homeButton.addEventListener('click', () => { window.location.href = 'index.html'; });
-    incompleteOkButton.addEventListener('click', () => incompleteOverlay.classList.add('hidden'));
+    if(checkButton) checkButton.addEventListener('click', checkCompletion);
+    if(submitButton) submitButton.addEventListener('click', submitPuzzle);
+    if(restartButton) restartButton.addEventListener('click', () => location.reload());
+    if(homeButton) homeButton.addEventListener('click', () => { window.location.href = 'index.html'; });
+    if(incompleteOkButton) incompleteOkButton.addEventListener('click', () => incompleteOverlay.classList.add('hidden'));
+    if (backBtn) backBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+    if (hintBtn) hintBtn.addEventListener('click', () => { alert('Hint feature coming soon!'); });
+
+    function completeCurrentPuzzleForTest() {
+        if (!ENABLE_DEV_COMPLETE_SHORTCUT) {
+            console.log('DEV: Auto-complete ignored because debug shortcut is disabled.');
+            return;
+        }
+
+        const inputs = document.querySelectorAll('.cell-input');
+        if (!inputs.length) {
+            console.log('DEV: Auto-complete ignored because puzzle inputs are not ready.');
+            return;
+        }
+
+        inputs.forEach(input => {
+            input.value = input.dataset.answer || '';
+            input.readOnly = false;
+            input.classList.remove('incorrect-flash');
+        });
+        checkCompletion();
+        console.log('DEV: Auto-completing crossword elements puzzle...');
+        submitPuzzle();
+    }
+
+    window.__completeLevelForTest = completeCurrentPuzzleForTest;
+
+    function handleDevCompleteKey(event) {
+        if ((event.key && event.key.toLowerCase() === 'c') || event.code === 'KeyC') {
+            if (event.__crosswordElementsDevCompleteHandled) {
+                return;
+            }
+            event.__crosswordElementsDevCompleteHandled = true;
+            event.preventDefault();
+            completeCurrentPuzzleForTest();
+        }
+    }
+
+    window.addEventListener('keydown', handleDevCompleteKey, true);
+    document.addEventListener('keydown', handleDevCompleteKey, true);
+
+    window.addEventListener('message', (event) => {
+        const data = event.data || {};
+        if (data.type === 'DEV_COMPLETE_LEVEL') {
+            completeCurrentPuzzleForTest();
+        }
+    });
     
     // Start Game
     startGame();
